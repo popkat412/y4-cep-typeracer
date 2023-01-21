@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "tsc-watch --onSuccess \"node ./build/main.js\"",
+    "dev": "tsc-watch --onSuccess \"node ./dist/main.js\"",
     "build": "tsc",
     "lint": "TIMING=1 eslint \"src/**/*.ts\""
   },
