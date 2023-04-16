@@ -7,6 +7,16 @@ const NUM_BANDS = 5;
 const WORD_SPACING = 0.1;
 const WORD_LIST = await fetch("words.json").then((res) => res.json());
 
+let gameStage:
+  | "before"
+  | "waitingOpponent"
+  | "waitingStart"
+  | "playing"
+  | "gameOver" = "before";
+
+let ownselfReady = false;
+let opponentReady = false;
+
 // {{{ socket setup
 const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
   "localhost:3000",
@@ -25,7 +35,7 @@ socket.connect();
 
 // }}}
 
-// {{{ UI stuff
+// {{{ DOM elements
 const createGameButton = document.getElementById(
   "create-game"
 )! as HTMLButtonElement;
@@ -37,22 +47,15 @@ const readyButton = document.getElementById(
 )! as HTMLButtonElement;
 const gameCodeDiv = document.getElementById("game-code")! as HTMLDivElement;
 const gameStatusDiv = document.getElementById("game-status")! as HTMLDivElement;
+const playAgainButton = document.getElementById(
+  "play-again-button"
+)! as HTMLButtonElement;
 
 const myCanvasDiv = document.getElementById("mine")! as HTMLDivElement;
 const opponentCanvasDiv = document.getElementById(
   "opponent"
 )! as HTMLDivElement;
 // }}}
-
-let gameStage:
-  | "before"
-  | "waitingOpponent"
-  | "waitingStart"
-  | "playing"
-  | "gameOver" = "before";
-
-let ownselfReady = false;
-let opponentReady = false;
 
 // {{{ Change state functions (very ugly plz don't look i should've used some ui framework or at least jquery i know)
 function toWaitingOppState(): void {
@@ -62,8 +65,10 @@ function toWaitingOppState(): void {
   gameStatusDiv.innerText = "Waiting for opponent to join";
   ownselfReady = false;
   opponentReady = false;
+  readyButton.disabled = false;
   myCanvasDiv.hidden = true;
   opponentCanvasDiv.hidden = true;
+  playAgainButton.hidden = true;
 }
 
 function toWaitingStartState(): void {
@@ -74,8 +79,10 @@ function toWaitingStartState(): void {
   gameStatusDiv.innerText = "Game will start when both players are ready";
   ownselfReady = false;
   opponentReady = false;
+  readyButton.disabled = false;
   myCanvasDiv.hidden = true;
   opponentCanvasDiv.hidden = true;
+  playAgainButton.hidden = true;
 }
 
 function toGameStartedState(): void {
@@ -88,6 +95,8 @@ function toGameStartedState(): void {
   opponentReady = false;
   myCanvasDiv.hidden = false;
   opponentCanvasDiv.hidden = false;
+  playAgainButton.hidden = true;
+  readyButton.disabled = false;
 }
 
 function toGameOverState(isWin: boolean): void {
@@ -101,6 +110,8 @@ function toGameOverState(isWin: boolean): void {
   opponentReady = false;
   myCanvasDiv.hidden = true;
   opponentCanvasDiv.hidden = true;
+  playAgainButton.hidden = false;
+  readyButton.disabled = false;
 }
 // }}}
 
@@ -146,6 +157,10 @@ readyButton.onclick = () => {
     socket.emit("ready");
   }
 };
+
+playAgainButton.onclick = () => {
+  socket.emit("playAgain");
+};
 // }}}
 
 // {{{ socket listeners
@@ -172,6 +187,10 @@ socket.on("start", () => {
 socket.on("opponentDied", () => {
   toGameOverState(true);
 });
+
+socket.on("playAgain", () => {
+  toWaitingStartState();
+});
 // }}}
 
 // {{{ actual p5.js stuff
@@ -182,13 +201,19 @@ function createP5(isOpponent: boolean): p5 {
 
       let playerInput = "";
       let currWord: WordData | null = null;
-      let opponentInput = "";
 
       const words: WordData[][] = [];
       let health = 5;
-      const speed = 0.001;
+      const speed = 0.001 / 16;
 
       const opponentWordsQueue: string[] = [];
+
+      socket.on("playAgain", () => {
+        playerInput = "";
+        currWord = null;
+        words.length = 0;
+        health = 5;
+      });
 
       // {{{ helper functions
       function newWord(opts?: Partial<WordData>): WordData {
@@ -261,10 +286,6 @@ function createP5(isOpponent: boolean): p5 {
           words[wordData.band].push(wordData);
         });
 
-        socket.on("input", (input) => {
-          opponentInput = input;
-        });
-
         socket.on("opponentClearedWord", (word) => {
           opponentWordsQueue.push(word); // might be a bit confusing cuz this one is actually for the top screen but eh this works
           clearWord(word);
@@ -281,6 +302,7 @@ function createP5(isOpponent: boolean): p5 {
       s.setup = () => {
         s.createCanvas(s.windowWidth, s.windowHeight / 2);
         s.background(0);
+        s.frameRate(60);
         s.textAlign(s.LEFT, s.TOP);
         s.textFont(myFont);
       };
@@ -316,7 +338,7 @@ function createP5(isOpponent: boolean): p5 {
           // update word positions
           for (let i = 0; i < NUM_BANDS; i++) {
             for (const word of words[i]) {
-              word.relxpos -= speed;
+              word.relxpos -= speed * s.deltaTime;
             }
           }
 
@@ -395,6 +417,13 @@ function createP5(isOpponent: boolean): p5 {
         if (s.keyCode == s.BACKSPACE) {
           currWord = null;
         }
+      };
+      // }}}
+
+      // {{{ windowResized
+      s.windowResized = () => {
+        s.width = s.windowWidth;
+        s.height = s.windowHeight / 2;
       };
       // }}}
     },

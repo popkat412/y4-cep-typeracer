@@ -195,6 +195,13 @@ io.on("connection", (socket) => {
     socket.to(socket.data.gameId).emit("opponentDied");
   });
 
+  socket.on("playAgain", () => {
+    if (!socket.data.gameId) throw new Error("no game id");
+    // if (!socket.data.gameId) return;
+
+    io.to(socket.data.gameId).emit("playAgain"); // send to BOTH clients
+  });
+
   socket.on("disconnecting", (info) => {
     console.log("diconnecting info: ", info);
     if (socket.data.gameId) {

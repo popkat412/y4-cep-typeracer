@@ -25,6 +25,8 @@ export interface ServerToClientEvents {
   opponentClearedWord: (word: string) => void; // word goes to top screen
   opponentDied: () => void;
 
+  playAgain: () => void;
+
   opponentLeft: () => void;
 }
 
@@ -43,6 +45,8 @@ export interface ClientToServerEvents {
   clearedWord: (word: string) => void;
 
   iDiedSadge: () => void;
+
+  playAgain: () => void;
 }
 
 export interface InterServerEvents { }
