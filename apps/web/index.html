@@ -5,11 +5,21 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vite + TS</title>
+  <title>Typeracer</title>
 </head>
 
-<body>
-  <div id="app">Hello</div>
+<body style="padding: 0; margin: 0">
+  <div>
+    <button id="create-game">Create Game</button>
+    <button id="join-game">Join Game</button>
+    <button id="ready-button" hidden>Ready</button>
+  </div>
+  <div id="game-code"></div>
+  <div id="game-status"></div>
+  <div>
+    <div id="mine" hidden></div>
+    <div id="opponent" hidden></div>
+  </div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 

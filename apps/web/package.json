@@ -10,6 +10,7 @@
     "lint": "TIMING=1 eslint \"src/**/*.ts\""
   },
   "dependencies": {
+    "shared": "workspace:*"
   },
   "devDependencies": {
     "eslint": "^7.32.0",
