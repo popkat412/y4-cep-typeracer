@@ -169,7 +169,6 @@ socket.on("getReady", () => {
 });
 
 socket.on("opponentReady", () => {
-  console.log("opponentReady");
   opponentReady = true;
   if (ownselfReady) {
     // start game
@@ -219,7 +218,6 @@ function createP5(isOpponent: boolean): p5 {
       // {{{ helper functions
       function newWord(opts?: Partial<WordData>): WordData {
         const oppWord = isOpponent ? undefined : opponentWordsQueue.shift();
-        console.log("oppWord", oppWord);
         return {
           word:
             opts?.word ?? oppWord ?? (s.random(WORD_LIST) as unknown as string),
@@ -243,8 +241,6 @@ function createP5(isOpponent: boolean): p5 {
       function setPlayerInput(inpt: string): void {
         if (isOpponent) return;
         playerInput = inpt;
-        // console.log("setting player input", inpt);
-        // socket.emit("input", inpt);
       }
       /// ranges are inclusive
       function randomInt(min: number, max: number): number {
@@ -253,7 +249,6 @@ function createP5(isOpponent: boolean): p5 {
         return Math.floor(Math.random() * (max - min + 1)) + min;
       }
       function clearWord(word: string, emit = true): void {
-        console.log("clear word: ", word);
         // search for the first occurance of the word
         for (let i = 0; i < NUM_BANDS; i++) {
           const idx = words[i].findIndex((v) => v.word == word);
@@ -364,7 +359,6 @@ function createP5(isOpponent: boolean): p5 {
           // draw currently typing word
           if (currWord != null) {
             s.fill("red");
-            // console.log(currWord);
             s.text(playerInput, xpos(currWord.relxpos), ypos(currWord.band));
           }
 
@@ -372,10 +366,10 @@ function createP5(isOpponent: boolean): p5 {
           for (let i = 0; i < NUM_BANDS; i++) {
             for (const word of words[i]) {
               if (word.relxpos < 0) {
-                console.log(`${word.word} reached end`);
                 health--;
-                if (health <= 0) {
+                if (health <= 0 && !isOpponent) {
                   socket.emit("iDiedSadge");
+                  console.log("emitted iDied");
                   toGameOverState(false);
                   break;
                 }
@@ -391,8 +385,6 @@ function createP5(isOpponent: boolean): p5 {
       s.keyTyped = () => {
         if (gameStage != "playing") return;
         if (isOpponent) return;
-
-        console.log("keyTyped", s.key);
 
         if (currWord == null) {
           // search for a word to set as current word

@@ -180,6 +180,8 @@ io.on("connection", (socket) => {
     if (!socket.data.gameId) throw new Error("no game id");
     // if (!socket.data.gameId) return;
 
+    console.log("received iDied");
+
     socket.to(socket.data.gameId).emit("opponentDied");
   });
 
