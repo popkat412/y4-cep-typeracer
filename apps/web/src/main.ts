@@ -3,7 +3,7 @@ import { ClientToServerEvents, ServerToClientEvents, WordData } from "shared";
 import { io, Socket } from "socket.io-client";
 
 // constants
-const NUM_BANDS = 5;
+const NUM_BANDS = 3;
 const WORD_SPACING = 0.1;
 const WORD_LIST = await fetch("words.json").then((res) => res.json());
 
@@ -213,11 +213,13 @@ function createP5(isOpponent: boolean): p5 {
         currWord = null;
         words.length = 0;
         health = 5;
+        opponentWordsQueue.length = 0;
       });
 
       // {{{ helper functions
       function newWord(opts?: Partial<WordData>): WordData {
-        const oppWord = opponentWordsQueue.shift();
+        const oppWord = isOpponent ? undefined : opponentWordsQueue.shift();
+        console.log("oppWord", oppWord);
         return {
           word:
             opts?.word ?? oppWord ?? (s.random(WORD_LIST) as unknown as string),
@@ -241,8 +243,8 @@ function createP5(isOpponent: boolean): p5 {
       function setPlayerInput(inpt: string): void {
         if (isOpponent) return;
         playerInput = inpt;
-        console.log("setting player input", inpt);
-        socket.emit("input", inpt);
+        // console.log("setting player input", inpt);
+        // socket.emit("input", inpt);
       }
       /// ranges are inclusive
       function randomInt(min: number, max: number): number {
@@ -250,7 +252,7 @@ function createP5(isOpponent: boolean): p5 {
         max = Math.floor(max);
         return Math.floor(Math.random() * (max - min + 1)) + min;
       }
-      function clearWord(word: string): void {
+      function clearWord(word: string, emit = true): void {
         console.log("clear word: ", word);
         // search for the first occurance of the word
         for (let i = 0; i < NUM_BANDS; i++) {
@@ -258,7 +260,9 @@ function createP5(isOpponent: boolean): p5 {
           if (idx != -1) {
             currWord = null;
             words[i].splice(idx, 1); // splice is in place
-            socket.emit("clearedWord", word);
+            if (emit) {
+              socket.emit("clearedWord", word);
+            }
             return;
           }
         }
@@ -287,8 +291,13 @@ function createP5(isOpponent: boolean): p5 {
         });
 
         socket.on("opponentClearedWord", (word) => {
-          opponentWordsQueue.push(word); // might be a bit confusing cuz this one is actually for the top screen but eh this works
-          clearWord(word);
+          clearWord(word, false);
+        });
+      }
+
+      if (!isOpponent) {
+        socket.on("opponentClearedWord", (word) => {
+          opponentWordsQueue.push(word);
         });
       }
 
@@ -319,20 +328,21 @@ function createP5(isOpponent: boolean): p5 {
 
           // add random new words in own game
           if (!isOpponent) {
-            // for (let i = 0; i < NUM_BANDS; i++) {
-            //   const word = words[i][words[i].length - 1];
-            //   if (
-            //     s.width -
-            //       xpos(word.relxpos) -
-            //       (myFont.textBounds(word.word, 0, 0) as any).w >
-            //     s.width * WORD_SPACING + 5
-            //   ) {
-            //     const nw = newWord({ band: i });
-            //     words[i].push(nw);
-            //     // inform opponent that new word was added
-            //     socket.emit("newWord", nw);
-            //   }
-            // }
+            for (let i = 0; i < NUM_BANDS; i++) {
+              const word = words[i][words[i].length - 1];
+              if (
+                !word ||
+                s.width -
+                xpos(word.relxpos) -
+                (myFont.textBounds(word.word, 0, 0) as any).w >
+                s.width * WORD_SPACING + 5
+              ) {
+                const nw = newWord({ band: i });
+                words[i].push(nw);
+                // inform opponent that new word was added
+                socket.emit("newWord", nw);
+              }
+            }
           }
 
           // update word positions
@@ -345,7 +355,7 @@ function createP5(isOpponent: boolean): p5 {
           // draw words
           for (let i = 0; i < NUM_BANDS; i++) {
             for (const word of words[i]) {
-              s.fill(word.fromOpponent ? "red" : "black").noStroke();
+              s.fill(word.fromOpponent ? "blue" : "black").noStroke();
               console.assert(word.band == i);
               s.text(word.word, xpos(word.relxpos), ypos(word.band));
             }
@@ -353,7 +363,7 @@ function createP5(isOpponent: boolean): p5 {
 
           // draw currently typing word
           if (currWord != null) {
-            s.fill("blue");
+            s.fill("red");
             // console.log(currWord);
             s.text(playerInput, xpos(currWord.relxpos), ypos(currWord.band));
           }
@@ -405,8 +415,7 @@ function createP5(isOpponent: boolean): p5 {
           // check if word is cleared
           if (playerInput == currWord.word) {
             setPlayerInput("");
-            socket.emit("clearedWord", currWord.word);
-            clearWord(currWord.word);
+            clearWord(currWord.word, !currWord.fromOpponent); // only emit if it's not from opponent (to avoid passing the same words back and forth)
           }
         }
       };
@@ -414,6 +423,7 @@ function createP5(isOpponent: boolean): p5 {
 
       // keyPressed {{{
       s.keyPressed = () => {
+        if (isOpponent) return;
         if (s.keyCode == s.BACKSPACE) {
           currWord = null;
         }

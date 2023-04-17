@@ -78,7 +78,6 @@ const sessionStore = new Map<string, SessionData>(); // session id -> session da
 // handle sockets
 io.use((socket, next) => {
   const sessionId = socket.handshake.auth.sessionId as string | undefined;
-  console.log(`in middleware (handshake sessionId: ${sessionId})`, socket.data);
   if (sessionId) {
     const session = sessionStore.get(sessionId);
     if (session) {
@@ -97,14 +96,10 @@ io.use((socket, next) => {
   socket.data.sessionId = randomUUID();
   sessionStore.set(socket.data.sessionId, {});
 
-  console.log("set session id: ", socket.data.sessionId);
-
   next();
 });
 
 io.on("connection", (socket) => {
-  console.log("new connection", socket.id);
-
   socket.emit("session", socket.data.sessionId!);
 
   socket.on("createGame", (callback) => {
@@ -112,8 +107,6 @@ io.on("connection", (socket) => {
 
     let gameCode = randomCode();
     while (rooms.has(gameCode)) gameCode = randomCode();
-
-    console.log("creating game: ", gameCode);
 
     joinSocketToGame(socket, gameCode);
 
@@ -163,13 +156,8 @@ io.on("connection", (socket) => {
     if (!socket.data.gameId) throw new Error("no game id");
     if (!socket.data.gameId) return;
 
-    // bufferedEmit(socket.data.gameId, (room) => {
-    //   room.emit("newWord", word);
-    // });
-
     // relay message to other client
     socket.to(socket.data.gameId).emit("newWord", word);
-    console.log(`emitted new word: ${word.word}`);
   });
 
   socket.on("input", (input) => {
