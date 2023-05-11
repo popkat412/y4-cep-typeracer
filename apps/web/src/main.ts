@@ -254,6 +254,7 @@ function createP5(isOpponent: boolean): p5 {
           const idx = words[i].findIndex((v) => v.word == word);
           if (idx != -1) {
             currWord = null;
+            console.log(words[i][idx].fromOpponent, "clearing word", emit);
             words[i].splice(idx, 1); // splice is in place
             if (emit) {
               socket.emit("clearedWord", word);
@@ -407,7 +408,8 @@ function createP5(isOpponent: boolean): p5 {
           // check if word is cleared
           if (playerInput == currWord.word) {
             setPlayerInput("");
-            clearWord(currWord.word, !currWord.fromOpponent); // only emit if it's not from opponent (to avoid passing the same words back and forth)
+            // clearWord(currWord.word, !currWord.fromOpponent); // only emit if it's not from opponent (to avoid passing the same words back and forth)
+            clearWord(currWord.word);
           }
         }
       };
